@@ -9,70 +9,37 @@ on:
       - main
 
 jobs:
-  # ─────────────────────────────────────────
-  # JOB 1 : Scan de sécurité avec Trivy
-  # ─────────────────────────────────────────
+
   scan-trivy:
     name: Security Scan - Trivy
     runs-on: ubuntu-latest
-
     steps:
-      # 1. Récupérer le code source
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Lancer le scan Trivy sur le système de fichiers
-      #    (analyse les dépendances, secrets, mauvaises configs)
-      - name: Run Trivy vulnerability scanner (filesystem)
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: "fs"             # Scan du filesystem (code source)
-          scan-ref: "."               # Répertoire racine du projet
-          format: "table"             # Affichage en tableau dans les logs
-          exit-code: "0"              # 0 = ne bloque pas le pipeline sur findings
-          ignore-unfixed: true        # Ignorer les CVE sans patch disponible
-          severity: "CRITICAL,HIGH"   # Remonter uniquement CRITICAL et HIGH
-
-      # 3. Générer un rapport SARIF (optionnel – pour GitHub Security tab)
-      - name: Run Trivy and generate SARIF report
+      - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: "fs"
           scan-ref: "."
-          format: "sarif"
-          output: "trivy-results.sarif"
+          format: "table"
+          exit-code: "0"
+          ignore-unfixed: true
           severity: "CRITICAL,HIGH"
 
-      # 4. Uploader le rapport dans l'onglet Security de GitHub
-      - name: Upload Trivy SARIF to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: "trivy-results.sarif"
-
-  # ─────────────────────────────────────────
-  # JOB 2 : Déploiement (dépend du scan)
-  # ─────────────────────────────────────────
   deploy:
     name: Deploy to GitHub Pages
     runs-on: ubuntu-latest
-    needs: scan-trivy          # ← attend que scan-trivy réussisse
-
+    needs: scan-trivy
     permissions:
-      contents: write           # nécessaire pour gh-pages
-
+      contents: write
     steps:
-      # 1. Checkout du code
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. (Optionnel) Build si nécessaire
-      # - name: Build project
-      #   run: npm install && npm run build
-
-      # 3. Déploiement sur GitHub Pages
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./           # Racine du projet (HTML statique)
-          publish_branch: gh-pages  # Branche de déploiement
+          publish_dir: ./
+          publish_branch: gh-pages
